@@ -18,6 +18,11 @@ contract Staker {
       exampleExternalContract = ExampleExternalContract(exampleExternalContractAddress);
   }
 
+  modifier notCompleted {
+    require(exampleExternalContract.completed() == false, "already completed.");
+    _;
+  }
+
   // Collect funds in a payable `stake()` function and track individual `balances` with a mapping:
   //  ( make sure to add a `Stake(address,uint256)` event and emit it for the frontend <List/> display )
   function stake() public payable {
@@ -27,9 +32,9 @@ contract Staker {
 
   // After some `deadline` allow anyone to call an `execute()` function
   //  It should either call `exampleExternalContract.complete{value: address(this).balance}()` to send all the value
-  uint256 public deadline = block.timestamp + 30 seconds;
+  uint256 public deadline = block.timestamp + 72 hours;
 
-  function execute() public {
+  function execute() public notCompleted {
     require(block.timestamp >= deadline, "deadline not met yet.");
 
     if (address(this).balance >= threshold) {
@@ -44,21 +49,22 @@ contract Staker {
 
 
   // Add a `withdraw(address payable)` function lets users withdraw their balance
-  function withdraw(address payable _to) public payable {
+  function withdraw(address payable _to) public payable notCompleted {
     require(openForWithdraw, "not allowed to withdraw.");
-    uint256 amount = balances[_to];
-    balances[_to] = 0;  
+    uint256 amount = address(this).balance;
+    // balances[_to] = 0;  
     _to.transfer(amount);
   }
 
 
   // Add a `timeLeft()` view function that returns the time left before the deadline for the frontend
   function timeLeft() public view returns (uint256) {
-    return (deadline - block.timestamp > 0) ? (deadline - block.timestamp) : 0;
+    return (deadline > block.timestamp) ? (deadline - block.timestamp) : 0;
   }
 
 
   // Add the `receive()` special function that receives eth and calls stake()
-
-
+  receive() external payable {
+    stake();
+  }
 }
